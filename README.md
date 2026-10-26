@@ -1,6 +1,8 @@
-# Tetris-tui
+# Tetris tui
 
 Modern guideline-style Tetris that runs in your terminal, written in Python.
+
+<img width="325" alt="tetriirasfd" src="https://github.com/user-attachments/assets/d506a611-eb71-4e56-9dae-b0c6e599bb4f" />
 
 ## Features
 
@@ -14,6 +16,7 @@ Modern guideline-style Tetris that runs in your terminal, written in Python.
 - **Adjustable handling:** DAS, ARR, soft drop speed and lock delay
 - **Four modes:** Marathon, Sprint, Ultra and Hardcore
 - Colored blocks with ANSI, emoji or plain ASCII styles
+
 
 ## Requirements
 
