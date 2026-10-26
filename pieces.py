@@ -30,6 +30,7 @@ class Piece:
     (1, 3): [(0, 0), (1, 0)],
     (2, 0): [(0, 0), (0, 1)],
     (3, 1): [(0, 0), (-1, 0)]}
+
     # number determines character representing piece <- pulled from dictionary set at the beginning
     shapes = {
         't': [[0, 2, 0],
@@ -61,6 +62,16 @@ class Piece:
               [8, 8]],
     }
 
+    piece_colors = {
+        't': (175, 65, 230),
+        'z': (235, 55, 55),
+        's': (65, 205, 75),
+        'i': (0, 220, 240),
+        'l': (255, 155, 25), 
+        'j': (45, 90, 235),
+        'o': (250, 215, 35), 
+    }
+
     def __init__(self, shape, x, y):
         assert shape in Piece.shapes
         self.x = x
@@ -68,6 +79,7 @@ class Piece:
         self.state = 0
         self.type = shape
         self.last_move = None
+        self.color = self.piece_colors[shape]
 
         # copy piece shape onto shape (list comprehension avoids shallow copy)
 

@@ -9,6 +9,8 @@ from board import Board, format_time
 from pieces import Piece
 from controls import Controls, Action
 from keys import pressed
+from renderer import render
+from canvas import Canvas
 
 # game class contains all ongoing game states
 
@@ -143,8 +145,6 @@ class Game:
 
             self.final_results = f'{self.mode} \n\nScore: {int(self.score)}\nTotal Lines Cleared: {self.total_lines} \nTotal Elapsed Time: {format_time(self.elapsed_time)}/{format_time(self.ultra)}'
 
-
-
     def new_piece(self):
 
         # function that keeps a list of the queue and randomizes more when below 7 (bag system) <- returns the next piece in the queue when called
@@ -171,12 +171,12 @@ class Game:
             if self.held_piece is None:
                 self.active_piece, self.held_piece = (
                     self.new_piece(),
-                    Piece(self.active_piece.type, 4, 0)
+                    self.active_piece.type
                 )
     
             else:
-                new_type = self.held_piece.type
-                self.held_piece = Piece(self.active_piece.type, 4, 0)
+                new_type = self.held_piece
+                self.held_piece = self.active_piece.type
 
                 # makes sure o stays in the middle when stored
 
@@ -309,18 +309,7 @@ class Game:
     # starts and tracks the current game
 
     def render_board(self):
-        self.board.render(self.active_piece, 
-            self.held_piece,
-            self.pieces[-5:][::-1],
-            self.combo,
-            self.score,
-            self.elapsed_time,
-            self.last_clear_type,
-            self.mode,
-            self.total_lines,
-            self.level,
-            self.sprint,
-            self.ultra)
+        render(self.canvas, self, self.board)
 
     def endgame(self):
         self.running = False
@@ -344,210 +333,213 @@ class Game:
 
         with raw_mode():
 
-            sys.stdout.write('\033[2J\033[H')
+            self.canvas = Canvas(60, 45)
+            try:
 
-            self.render_board()
+                self.render_board()
 
-            # monotonic timers are used to track time passed
+                # monotonic timers are used to track time passed
 
-            left_held = False
-            left_start_hold = time.perf_counter()
-            left_held_time = time.perf_counter()
+                left_held = False
+                left_start_hold = time.perf_counter()
+                left_held_time = time.perf_counter()
 
-            right_held = False
-            right_start_hold = time.perf_counter()
-            right_held_time = time.perf_counter()
+                right_held = False
+                right_start_hold = time.perf_counter()
+                right_held_time = time.perf_counter()
 
-            fall_speed = self.gravity_speed
+                fall_speed = self.gravity_speed
 
-            # touch timers
-            self.reset_piece_state()
+                # touch timers
+                self.reset_piece_state()
 
-            last_render = time.perf_counter()
+                last_render = time.perf_counter()
 
-            start_time = time.perf_counter()
+                start_time = time.perf_counter()
 
-            # import controls
+                # import controls
 
-            inputs = Controls()
+                inputs = Controls()
 
-            while self.running:
+                while self.running:
 
-                #track keys pressedgit add -A
+                    #track keys pressedgit add -A
 
-                new_actions, held_actions = inputs.read()
+                    new_actions, held_actions = inputs.read()
 
-                # allow game to be reset/quit
+                    # allow game to be reset/quit
 
-                if Key.esc in pressed:
-                    self.running = False
-                if Key.tab in pressed:
-                    self.menu = True
-                    self.running = False
+                    if Key.esc in pressed:
+                        self.running = False
+                    if Key.tab in pressed:
+                        self.menu = True
+                        self.running = False
 
 
-                now = time.perf_counter()
+                    now = time.perf_counter()
 
-                self.elapsed_time = now - start_time
+                    self.elapsed_time = now - start_time
 
-                # three separate timers determine when a piece must be set in stone; timers start when a piece can no longer move down
+                    # three separate timers determine when a piece must be set in stone; timers start when a piece can no longer move down
 
-                if self.mode != 'Hardcore':
+                    if self.mode != 'Hardcore':
 
-                    if not self.board.is_valid(self.active_piece, dy=1):
-                        if not self.touching:
-                            self.stationary_touching_timer = now
-                            self.horizontal_touching_timer = now
-                        self.touching = True
+                        if not self.board.is_valid(self.active_piece, dy=1):
+                            if not self.touching:
+                                self.stationary_touching_timer = now
+                                self.horizontal_touching_timer = now
+                            self.touching = True
+                        else:
+                            self.touching = False
+
+                    # Hardcore immediately solidifies piees when a piece cannot move down
+
+                    elif not self.board.is_valid(self.active_piece, dy=1):
+                        self.clear()
+
+                    # soft drop options (instant or multiplied)
+
+                    if soft_drop_multiplier != 'instant':
+
+                        if Action.SOFT_DROP in held_actions:
+                            fall_speed = self.gravity_speed/soft_drop_multiplier
+                        else:
+                            fall_speed = self.gravity_speed
+
                     else:
-                        self.touching = False
 
-                # Hardcore immediately solidifies piees when a piece cannot move down
-
-                elif not self.board.is_valid(self.active_piece, dy=1):
-                    self.clear()
-
-                # soft drop options (instant or multiplied)
-
-                if soft_drop_multiplier != 'instant':
-
-                    if Action.SOFT_DROP in held_actions:
-                        fall_speed = self.gravity_speed/soft_drop_multiplier
-                    else:
                         fall_speed = self.gravity_speed
 
-                else:
+                        # distance must be gauged to determine new y value; last_move changed accordingly for t_spins
 
-                    fall_speed = self.gravity_speed
+                        if Action.SOFT_DROP in held_actions:
+                            distance = self.board.drop_distance(self.active_piece)
 
-                    # distance must be gauged to determine new y value; last_move changed accordingly for t_spins
+                            if distance > 0:
+                                self.active_piece.y += distance
+                                self.active_piece.last_move = 'move'
 
-                    if Action.SOFT_DROP in held_actions:
+                            if not self.touching:
+                                self.stationary_touching_timer = now
+                                self.horizontal_touching_timer = now
+                            self.touching = True
+
+                    # gravity; move down everytime gravity_speed has passed
+
+                    if now - self.gravity_timer >= fall_speed:
+
+                        if self.board.is_valid(self.active_piece, dy =1):
+
+                            self.active_piece.move(self.board, 'down')
+                            self.gravity_timer = now
+
+                        else:
+                            self.touching = True
+
+                    # if a piece has been unable to move down for longer than the time granted by its respective timer
+
+                    if self.touching:
+
+                        if (now - self.stationary_touching_timer >= stationary_touch_time 
+                            or now - self.absolute_timer >= absolute_time 
+                            or now - self.horizontal_touching_timer >= horizontal_touch_time):
+
+                            self.clear()
+
+                    # hard drop bypasses all timers and immediately locks the piece
+
+                    if Action.HARD_DROP in new_actions:
+
                         distance = self.board.drop_distance(self.active_piece)
 
                         if distance > 0:
                             self.active_piece.y += distance
                             self.active_piece.last_move = 'move'
-
-                        if not self.touching:
-                            self.stationary_touching_timer = now
-                            self.horizontal_touching_timer = now
-                        self.touching = True
-
-                # gravity; move down everytime gravity_speed has passed
-
-                if now - self.gravity_timer >= fall_speed:
-
-                    if self.board.is_valid(self.active_piece, dy =1):
-
-                        self.active_piece.move(self.board, 'down')
-                        self.gravity_timer = now
-
-                    else:
-                        self.touching = True
-
-                # if a piece has been unable to move down for longer than the time granted by its respective timer
-
-                if self.touching:
-
-                    if (now - self.stationary_touching_timer >= stationary_touch_time 
-                        or now - self.absolute_timer >= absolute_time 
-                        or now - self.horizontal_touching_timer >= horizontal_touch_time):
-
                         self.clear()
 
-                # hard drop bypasses all timers and immediately locks the piece
+                    # DAS and ARR implemented with monotonic timers; a key held down for DAS amount of seconds will start repeating at a rate of ARR
 
-                if Action.HARD_DROP in new_actions:
+                    if Action.LEFT in held_actions and not right_held:
 
-                    distance = self.board.drop_distance(self.active_piece)
-
-                    if distance > 0:
-                        self.active_piece.y += distance
-                        self.active_piece.last_move = 'move'
-                    self.clear()
-
-                # DAS and ARR implemented with monotonic timers; a key held down for DAS amount of seconds will start repeating at a rate of ARR
-
-                if Action.LEFT in held_actions and not right_held:
-
-                    if not left_held:
-
-                        if self.active_piece.move(self.board, 'left'):
-                            self.stationary_touching_timer = now
-
-                        left_start_hold = now
-                        left_held_time = now
-                        left_held = True
-
-                    elif now - left_start_hold >= das:
-
-                        if now - left_held_time >= arr:
+                        if not left_held:
 
                             if self.active_piece.move(self.board, 'left'):
                                 self.stationary_touching_timer = now
 
+                            left_start_hold = now
                             left_held_time = now
+                            left_held = True
 
-                if Action.RIGHT in held_actions and not left_held:
+                        elif now - left_start_hold >= das:
 
-                    if not right_held:
+                            if now - left_held_time >= arr:
 
-                        if self.active_piece.move(self.board, 'right'):
-                            self.stationary_touching_timer = now
+                                if self.active_piece.move(self.board, 'left'):
+                                    self.stationary_touching_timer = now
 
-                        right_start_hold = now
-                        right_held_time = now
-                        right_held = True
+                                left_held_time = now
 
-                    elif now - right_start_hold >= das:
+                    if Action.RIGHT in held_actions and not left_held:
 
-                        if now - right_held_time >= arr:
+                        if not right_held:
 
                             if self.active_piece.move(self.board, 'right'):
                                 self.stationary_touching_timer = now
-                    
+
+                            right_start_hold = now
                             right_held_time = now
+                            right_held = True
 
-                # loops through ways of rotating and compares to list of inputs
+                        elif now - right_start_hold >= das:
 
-                for action in Game.rotations:
-                    if action in new_actions:
-                        if self.active_piece.rotate(self.board, Game.rotations[action]):
-                            self.stationary_touching_timer = now
-                            self.horizontal_touching_timer = now
+                            if now - right_held_time >= arr:
 
-                if Action.HOLD in new_actions:
-                    self.hold_piece()
-                    if not self.running:
-                        break
+                                if self.active_piece.move(self.board, 'right'):
+                                    self.stationary_touching_timer = now
+                        
+                                right_held_time = now
 
-                # reset key states when released
-                
-                if Action.LEFT not in held_actions:
-                    left_held = False
+                    # loops through ways of rotating and compares to list of inputs
+
+                    for action in Game.rotations:
+                        if action in new_actions:
+                            if self.active_piece.rotate(self.board, Game.rotations[action]):
+                                self.stationary_touching_timer = now
+                                self.horizontal_touching_timer = now
+
+                    if Action.HOLD in new_actions:
+                        self.hold_piece()
+                        if not self.running:
+                            break
+
+                    # reset key states when released
                     
-                if Action.RIGHT not in held_actions:
-                    right_held = False
+                    if Action.LEFT not in held_actions:
+                        left_held = False
+                        
+                    if Action.RIGHT not in held_actions:
+                        right_held = False
 
-                # refresh only at fps to avoid stuttering and cpu overload
+                    # refresh only at fps to avoid stuttering and cpu overload
 
-                if (now - last_render) >= 1/fps:
+                    if (now - last_render) >= 1/fps:
 
-                    # update specific mode stats before render
-                                        
+                        # update specific mode stats before render
+                                            
+                        self.update_mode()
+                        self.render_board()
+                        # track last frame
+                        
+                        last_render = now
+
+                    # polling rate
+
+                    time.sleep(1/tick_rate)
+
+
+                if self.game_over:
                     self.update_mode()
-                    self.render_board()
-                    # track last frame
-                    
-                    last_render = now
-
-                # polling rate
-
-                time.sleep(1/tick_rate)
-
-
-            if self.game_over:
-                self.update_mode()
-                self.show_game_over()
+                    self.show_game_over()
+            finally:
+                self.canvas.close()
 
