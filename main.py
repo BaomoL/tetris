@@ -3,126 +3,108 @@ from terminal import raw_mode
 from pynput.keyboard import Key
 from game import Game
 from keys import pressed, listener
-
-# main menu items
-
-# mode_menu = ['Marathon', 'Sprint', 'Ultra', 'Hardcore']
-
-# second menu for modes with an option
-
-# options = {
-#     '2': ('Sprint: how many lines?', [('20 lines', 20), ('40 lines', 40), ('100 lines', 100)]),
-#     '3': ('Ultra: how long?', [('1 minute', 60), ('2 minutes', 120), ('5 minutes', 300)])
-# }
-
-# # stop at current key until it's released so the input isn't transferred to the next screen
-
-# def wait_for_release(key):
-#     while key in pressed:
-#         time.sleep(0.01)
-
-# # show a numbered menu; return the pressed number as a string
-
-# def select_menu(title, labels, footer):
-
-#     keys = [str(n + 1) for n in range(len(labels))]
-
-#     with raw_mode():
-
-#         sys.stdout.write('\033[2J\033[H')
-#         print('\n' + title)
-#         for key, label in zip(keys, labels):
-#             print(f'{key}. {label}')
-#         print('\n' + footer)
-
-#         while True:
-
-#             if Key.esc in pressed:
-#                 wait_for_release(Key.esc)
-#                 return None
-
-#             for key in keys:
-#                 if key in pressed:
-#                     wait_for_release(key)
-#                     return key
-
-#             time.sleep(0.01)
+from canvas import Canvas
+from renderer import display_menu
+from controls import Controls, Action
+from config import (rotate_clockwise, rotate_counter_clockwise, rotate_one_eighty, rotate_clockwise_backup,
+                    move_left, move_right, soft_drop, hard_drop, hold)
 
 
-# def main():
+page = {
+    "Marathon": ("Marathon",),
 
-listener.start()
+    "Sprint": {
+        "20 Lines": ("Sprint", 20),
+        "40 Lines": ("Sprint", 40),
+        "100 Lines": ("Sprint", 100),
+    },
 
-#     try:
-#         # each return statement cancels the loop before the next one is reached
-#         while True:
-#             mode = select_menu('Choose mode:', mode_menu, 'ESC to quit')
-#             if mode is None:
-#                 return
-#             # sprint and ultra get a second menu; esc there goes back to the first
-            
-#             sprint = None
-#             ultra = None
+    "Ultra": {
+        "1 Minute": ("Ultra", None, 60),
+        "2 Minutes": ("Ultra", None, 120),
+        "5 Minutes": ("Ultra", None, 300),
+    },
 
-#             if mode in options:
-#                 title, choices = options[mode]
-#                 pick = select_menu(title, [label for label, _ in choices], 'ESC to go back')
-#                 if pick is None:
-#                     continue
+    "Hardcore": ("Hardcore",),
 
-#                 value = choices[int(pick) - 1][1]
+    "Settings": {
+        "Move Left": move_left,
+        "Move Right": move_right,
+        "Soft Drop": soft_drop,
+        "Hard Drop": hard_drop,
+        "Hold": hold,
+        "Rotate Clockwise": rotate_clockwise,
+        "Rotate Counter-Clockwise": rotate_counter_clockwise,
+        "Rotate 180": rotate_one_eighty,
+        "Rotate Clockwise (Backup)": rotate_clockwise_backup,
+    },
 
-#                 if mode == '2':
-#                     sprint = value
-#                 else:
-#                     ultra = value
+    "Start": True
+}
 
-#             game = Game(mode, sprint, ultra)
+game_canvas = Canvas(50, 35)
+input = Controls('menu')
+game_mode = None
+selected = 0
+stack = [(page, "Select Mode")]
+current = stack[-1][0]
+options = list(current)
+entered = {"Ultra": (("Ultra", None, 120), 1), "Sprint": (("Sprint", 40, None), 1)}
+start = False
 
-#             while True:
-#                 game.start()
+with raw_mode():
+    try:
+        listener.start()
 
-#                 # tab during play goes back to the menu
+        while not start:
 
-#                 if game.menu:
-#                     wait_for_release(Key.tab)
-#                     break
+            new_actions, held_actions = input.read()
 
-#                 # esc during play quits (game never ended)
+            if Action.MENU_DOWN in new_actions:
+                selected = (selected +1) % len(options)
 
-#                 if not game.game_over:
-#                     return
+            if Action.MENU_UP in new_actions:
+                selected = (selected - 1) % len(options)
 
-#                 print("\nPress ENTER to restart, TAB to select mode, ESC to quit")
+            if Action.MENU_RIGHT in new_actions:
+                value = current[options[selected]]
+                if isinstance(value, dict):
+                    stack.append((value, options[selected]))
+                    if selected >= len(list(value)):
+                        selected = len(list(value)) -1
 
-#                 while (Key.enter not in pressed
-#                        and Key.tab not in pressed
-#                        and Key.esc not in pressed):
-#                     time.sleep(0.01)
+            if Action.MENU_LEFT in new_actions:
+                if len(stack)>1:
+                    stack.pop()
+                current = stack[-1][0]
+                if selected >= len(list(current)):
+                    selected = len(list(current)) - 1
 
-#                 # esc skips the restart
+            current = stack[-1][0]
+            current_title = stack[-1][1]
+            options = list(current)
 
-#                 if Key.esc in pressed:
-#                     return
-
-#                 if Key.tab in pressed:
-#                     wait_for_release(Key.tab)
-#                     break
-
-#                 # enter restarts with the same mode and option
-
-#                 wait_for_release(Key.enter)
+            if Action.MENU_ENTER in new_actions:
+                value = current[options[selected]]
+                if not isinstance(value, dict):
+                    entered[current_title] = (value, selected)
+                if options[selected] in ("Marathon", "Sprint", "Ultra", "Hardcore"):
+                    game_mode = options[selected]
+                if options[selected] == "Start":
+                    start = True
                 
-#                 game = Game(mode, sprint, ultra)
 
-#     finally:
+            display_menu(game_canvas, selected, current_title, options, entered, game_mode)
 
+            time.sleep(0.01)
+        if game_mode in ("Sprint", "Ultra"):
+            game_mode = entered[game_mode][0]
+        else:
+            game_mode = (game_mode,)
+        game = Game(game_canvas, *game_mode)
+        game.start()
 
+    finally:
 
-# if __name__ == '__main__':
-#     main()
+        listener.stop()
 
-start = Game('1')
-start.start()
-
-listener.stop()

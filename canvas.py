@@ -29,7 +29,7 @@ class Canvas:
 
         for i in range(1, width + 1):
             for j in range(1, height + 1):
-                self.single_rectangle(x + i -1, y + j - 1, color)
+                self.char(x + i -1, y + j - 1, ' ', bcolor = color)
 
     def char(self, x, y, text, fcolor = None, bcolor = None):
 

@@ -1,19 +1,5 @@
-from canvas import Canvas
 from pieces import Piece
-
-color = {
-    '0': None,
-    '1': (90, 96, 106),
-    '2': (175, 65, 230),    # t  purple
-    '3': (235, 55, 55),     # z  red
-    '4': (65, 205, 75),     # s  green
-    '5': (0, 220, 240),     # i  cyan
-    '6': (255, 155, 25),    # l  orange
-    '7': (45, 90, 235),     # j  blue
-    '8': (250, 215, 35),    # o  yellow
-}
-
-offset = 10
+import time
 
 # function for converting time to time format
 
@@ -32,19 +18,85 @@ def draw_block(canvas, row, col, char, offset=0):
 # append text into canvas
 
 def text(canvas, row, col, text, fcolor = None, bcolor = None):
-        column = col
-        for letter in list(text):
-            canvas[row][column] = (letter, fcolor, bcolor)
-            column+=1
+    column = col
+    for letter in list(text):
+        canvas[row][column] = (letter, fcolor, bcolor)
+        column+=1
+
+def display_menu(canvas, selected, title, menu, entered, game_mode):
+
+    new_buffer = canvas.blank_canvas()
+    text(new_buffer, 2, 2, title, (255,255,255))
+
+    for i in range(len(menu)):
+        if title == "Select Mode":
+            txt = menu[i]
+            y = i + 5
+            highlighted = False
+            if menu[i] == "Settings":
+                y +=1
+            elif menu[i] == "Start":
+                y += 2
+            elif menu[i] == "Sprint":
+                if "Sprint" in entered:
+                    txt = f'{menu[i]}: {entered["Sprint"][0][1]} Lines'
+            elif menu[i] == "Ultra":
+                if "Ultra" in entered:
+                    txt = f'{menu[i]}: {entered["Ultra"][0][2]//60} Minute'
+            if menu[i] == game_mode:
+                highlighted = True
+            if highlighted:
+                text(new_buffer, y, 3, txt, (0,0,0), (255, 255, 255))
+            else:
+                text(new_buffer, y, 3, txt, (255,255,255))
+
+        elif title in entered:
+            if entered[title][1] == i:
+                text(new_buffer, 5+i, 3, f'{menu[i]}', (0,0,0), (255, 255, 255))
+            else:
+                text(new_buffer, 5+i, 3, f'{menu[i]}', (255,255,255))
+        else:
+            text(new_buffer, 5+i, 3, f'{menu[i]}', (255,255,255))
+
+    if title == "Select Mode" and menu[selected] == "Settings":
+        text(new_buffer, selected+6, 1, '>', (255,255,255))
+    elif title == "Select Mode" and menu[selected] == "Start":
+        text(new_buffer, selected+7, 1, '>', (255,255,255))
+    else:
+        text(new_buffer, selected+5, 1, '>', (255,255,255))
+
+    # text(new_buffer, 20, 3, f'{entered}', (255,255,255))
+
+    canvas.load(new_buffer)
+    
 
 def render(canvas, game, board):
 
     # current grid
 
     new_buffer = canvas.blank_canvas()
+
+    # only puts a color when truth value
+
+    for row in range(2):
+            for column in range(1, len(board.grid[row])-1):
+                if board.grid[row][column]:
+                    draw_block(new_buffer, row, column, (' ', None, Piece.piece_colors[board.grid[row][column]]), 10)
+
     for row in range(2, len(board.grid)):
         for column in range(len(board.grid[row])):
-            draw_block(new_buffer, row, column, (' ', None, color[board.grid[row][column]]), 10)
+            if board.grid[row][column]:
+                draw_block(new_buffer, row, column, (' ', None, Piece.piece_colors[board.grid[row][column]]), 10)
+
+    # ghost piece
+    ghost_y = game.active_piece.y
+
+    ghost_y += board.drop_distance(game.active_piece)
+        
+    for y in range(len(game.active_piece.shape)):
+        for x in range(len(game.active_piece.shape[y])):
+            if game.active_piece.shape[y][x]:
+                draw_block(new_buffer, ghost_y+y, game.active_piece.x + x, ('░', game.active_piece.color, None), 10)
 
     # draw piece
 
@@ -56,17 +108,6 @@ def render(canvas, game, board):
             board_y = game.active_piece.y + piece_y
             if game.active_piece.shape[piece_y][piece_x]:
                 draw_block(new_buffer, board_y, board_x, (' ', None, game.active_piece.color), 10)
-
-    # ghost piece
-    ghost_y = game.active_piece.y
-
-    ghost_y += board.drop_distance(game.active_piece)
-        
-    for y in range(len(game.active_piece.shape)):
-        for x in range(len(game.active_piece.shape[y])):
-            if game.active_piece.shape[y][x]:
-                if board.grid[ghost_y + y][game.active_piece.x + x] not in ('1', '2', '3', '4', '5','6','7','8'):
-                    draw_block(new_buffer, ghost_y+y, game.active_piece.x + x, ('░', game.active_piece.color, None), 10)
 
     # draw held piece
 

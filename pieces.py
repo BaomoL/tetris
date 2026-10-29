@@ -33,36 +33,38 @@ class Piece:
 
     # number determines character representing piece <- pulled from dictionary set at the beginning
     shapes = {
-        't': [[0, 2, 0],
-              [2, 2, 2],
-              [0, 0, 0]],
+        
+    't': [[None, 't',  None],
+            ['t',  't',  't' ],
+            [None, None, None]],
 
-        'z': [[3, 3, 0],
-              [0, 3, 3],
-              [0, 0, 0]],
+    'z': [['z',  'z',  None],
+            [None, 'z',  'z' ],
+            [None, None, None]],
 
-        's': [[0, 4, 4],
-              [4, 4, 0],
-              [0, 0, 0]],
+    's': [[None, 's',  's' ],
+            ['s',  's',  None],
+            [None, None, None]],
 
-        'i': [[0, 0, 0, 0],
-              [5, 5, 5, 5],
-              [0, 0, 0, 0],
-              [0, 0, 0, 0]],
+    'i': [[None, None, None, None],
+            ['i',  'i',  'i',  'i' ],
+            [None, None, None, None],
+            [None, None, None, None]],
 
-        'l': [[0, 0, 6],
-              [6, 6, 6],
-              [0, 0, 0]],
+    'l': [[None, None, 'l' ],
+            ['l',  'l',  'l' ],
+            [None, None, None]],
 
-        'j': [[7, 0, 0],
-              [7, 7, 7],
-              [0, 0, 0]],
+    'j': [['j',  None, None],
+            ['j',  'j',  'j' ],
+            [None, None, None]],
 
-        'o': [[8, 8],
-              [8, 8]],
-    }
+    'o': [['o', 'o'],
+            ['o', 'o']],
+            }
 
     piece_colors = {
+        '.': (90, 96, 106),
         't': (175, 65, 230),
         'z': (235, 55, 55),
         's': (65, 205, 75),
@@ -147,7 +149,7 @@ class Piece:
 def rotate_c(matrix):
     
     n = len(matrix)
-    result = [[0] * n for _ in range(n)]
+    result = [[None] * n for _ in range(n)]
 
     for r in range(n):
         for c in range(n):

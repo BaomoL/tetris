@@ -1,38 +1,14 @@
-import sys
-from pieces import Piece
-
-# determine the character representing each piece; taken from config
-
-def piece_color(t = None, z = None, s = None, i = None, l = None, j = None, o = None, all_pieces = None):
-
-    piece_colors = {}
-
-    if not all_pieces:
-        piece_colors['2'] = t
-        piece_colors['3'] = z
-        piece_colors['4'] = s
-        piece_colors['5'] = i
-        piece_colors['6'] = l
-        piece_colors['7'] = j
-        piece_colors['8'] = o
-    else:
-        for x in range(2, 9):
-            piece_colors[str(x)] = all_pieces
-
-    return piece_colors
-
 # board class represents current active board
 
 class Board:
 
-    piece_colors = piece_color(t, z, s, i, l, j, o, all_pieces)
-    empty_row = '100000000001'
-    floor_row = '111111111111'
+    empty_row = ['.'] + [None] * 10 + ['.']
+    floor_row = ['.'] * 12
 
-    # create 22x12 board, 1s represent borders and 0s represent empty space
+    # create 22x12 board, '.'s represent borders and Nones represent empty space
 
     def __init__(self):
-        self.grid = [list(Board.empty_row) for _ in range ( 21)] + [list(Board.floor_row)]
+        self.grid = [list(Board.empty_row) for _ in range(21)] + [list(Board.floor_row)]
         self.placed_pieces = 0
 
     # # gauge how far a piece can drop
@@ -57,7 +33,7 @@ class Board:
                 board_y = piece.y + piece_y
 
                 if piece.shape[piece_y][piece_x]:
-                    self.grid[board_y][board_x] = str(piece.shape[piece_y][piece_x])
+                    self.grid[board_y][board_x] = piece.shape[piece_y][piece_x]
 
         self.placed_pieces += 1
 
@@ -65,7 +41,7 @@ class Board:
 
     def perfect_clear(self):
 
-        return all(cell == '0' for row in self.grid[:-1] for cell in row[1:-1])
+        return all(not cell for row in self.grid[:-1] for cell in row[1:-1])
 
     # checks if any given move is valid (allows a proposed shape if a spin is involved <- used for kick positions)
 
@@ -84,7 +60,7 @@ class Board:
                             0 <= board_y < len(self.grid)):
                         return False
 
-                    if self.grid[board_y][board_x] == '1' or self.grid[board_y][board_x] in self.piece_colors:
+                    if self.grid[board_y][board_x]:
                         return False
         return True
 
@@ -95,7 +71,7 @@ class Board:
         if piece.type == 't':
             for x in [0, 2]:
                 for y in [0, 2]:
-                    if self.grid[piece.y + y][piece.x + x] != '0':
+                    if self.grid[piece.y + y][piece.x + x]:
                         corners_covered += 1
     
         if piece.last_move == 'rotate' and corners_covered >= 3:
@@ -111,7 +87,7 @@ class Board:
         cleared = 0
 
         for y in range(0, len(self.grid) - 1):
-            if all(x in self.piece_colors for x in self.grid[y][1:-1]):
+            if all(x for x in self.grid[y][1:-1]):
                 self.grid.pop(y)
                 self.grid.insert(0, list(Board.empty_row))
                 cleared += 1

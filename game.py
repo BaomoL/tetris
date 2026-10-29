@@ -5,12 +5,12 @@ from pynput.keyboard import Key
 from config import (das, arr, soft_drop_multiplier, stationary_touch_time,
                     horizontal_touch_time, absolute_time, fps, tick_rate)
 
-from board import Board, format_time
+from board import Board
+from renderer import format_time
 from pieces import Piece
 from controls import Controls, Action
 from keys import pressed
 from renderer import render
-from canvas import Canvas
 
 # game class contains all ongoing game states
 
@@ -42,39 +42,18 @@ class Game:
     3: 1800,
     4: 2000}
 
-    modes = {
-    '1': {
-        'game_mode': 'Marathon',
-        'line_limit': None,
-        'time_limit': None,
-    },
-    '2': {
-        'game_mode': 'Sprint',
-        'line_limit': 40,
-        'time_limit': None,
-    },
-    '3': {
-        'game_mode': 'Ultra',
-        'line_limit': None,
-        'time_limit': 120,
-    },
-    '4': {
-        'game_mode': 'Hardcore',
-        'line_limit': None,
-        'time_limit': None,
-    } }
-
     # rotations
 
     rotations = {Action.ROTATE_CW: 'c', Action.ROTATE_CCW: 'cc', Action.ROTATE_180: '180'}
 
 
-    def __init__(self, game_mode, sprint=None, ultra=None):
+    def __init__(self, canvas, game_mode, line_limit=None, time_limit=None):
 
         # game states involve tracking the multipliers, ongoing combos, whether or not the game is running, whether or not a piece is held, and more
 
         self.board = Board()
         self.running = False
+        self.game_over = False
         self.pieces = random.sample(Game.bag, len(Game.bag))
         self.active_piece = self.new_piece()
         self.held_piece = None
@@ -83,11 +62,11 @@ class Game:
         self.score = 0
         self.b2b = False
         self.b2b_mul = 1
-        self.game_over = False
         self.elapsed_time = 0
         self.last_clear_type = ''
         self.b2b_counter = 0
         self.touching = False
+        self.canvas = canvas
 
         # menu decides whether or not the menu should be showing
 
@@ -95,18 +74,10 @@ class Game:
 
         # game mode tracks the type of game created:
 
-        self.mode = Game.modes[game_mode]['game_mode']
-        self.line_limit = Game.modes[game_mode]['line_limit']
-        self.time_limit = Game.modes[game_mode]['time_limit']
+        self.mode = game_mode
+        self.line_limit = line_limit
+        self.time_limit = time_limit
         self.gravity_speed = 1
-
-        # set options from menu
-        
-        if self.mode == 'Sprint' and sprint is not None:
-            self.line_limit = sprint
-
-        if self.mode == 'Ultra' and ultra is not None:
-            self.time_limit = ultra
 
         self.final_results = ''
 
@@ -188,17 +159,6 @@ class Game:
                 self.endgame()
 
             self.reset_piece_state()
-
-    def show_game_over(self):
-
-        # for when game ends
-
-        sys.stdout.write('\033[3J\033[2J\033[H')        
-        print('\n' * 5)
-
-        print(self.final_results)
-
-        sys.stdout.flush()
 
     # scoring is calculated using standard tetris system which includes:
     # back to back multiplier (1.5x)
@@ -333,7 +293,6 @@ class Game:
 
         with raw_mode():
 
-            self.canvas = Canvas(60, 45)
             try:
 
                 self.render_board()
@@ -359,7 +318,7 @@ class Game:
 
                 # import controls
 
-                inputs = Controls()
+                inputs = Controls('game')
 
                 while self.running:
 
@@ -539,7 +498,7 @@ class Game:
 
                 if self.game_over:
                     self.update_mode()
-                    self.show_game_over()
+                    self.running = False
             finally:
                 self.canvas.close()
 
