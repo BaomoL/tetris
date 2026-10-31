@@ -33,6 +33,8 @@ bindings = {
     "rotate_clockwise_backup": rotate_clockwise_backup,
 }
 
+default_bindings = dict(bindings)
+
 key_names = {
     Key.up: "Up",
     Key.down: "Down",
@@ -64,6 +66,7 @@ key_names = {
     Key.f1: "F1", Key.f2: "F2", Key.f3: "F3", Key.f4: "F4",
     Key.f5: "F5", Key.f6: "F6", Key.f7: "F7", Key.f8: "F8",
     Key.f9: "F9", Key.f10: "F10", Key.f11: "F11", Key.f12: "F12",
+    None: '-'
 }
 
 menu = {Key.up: Action.MENU_UP,
@@ -89,7 +92,7 @@ actions = {
 class Controls:
 
     def __init__(self, game_state):
-        self.last_held = set(pressed)
+        self.last_held = set()
         self.game_state = game_state
 
         # key binds are based on bindings dictionary
@@ -99,6 +102,8 @@ class Controls:
                 self.keybinds[bindings[name]] = action
         else:
             self.keybinds = menu
+
+        self.read()
 
     def read(self):
 

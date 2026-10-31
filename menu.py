@@ -1,11 +1,8 @@
 import time
-from terminal import raw_mode
 from pynput.keyboard import Key
-from game import Game
-from keys import listener, pressed
-from canvas import Canvas
-from renderer import display_menu
-from controls import Controls, Action, bindings, key_names
+from keys import pressed
+from renderer import display_menu, display_results
+from controls import Controls, Action, bindings, key_names, default_bindings
 
 class Setting:
 
@@ -40,138 +37,165 @@ page = {
             "Hard Drop": Setting("hard_drop"),
             "Hold": Setting("hold"),
             "Rotate C (Backup)": Setting("rotate_clockwise_backup"),
+            "Reset": "reset"
         },
 
-        "Start": True}
-}
-
-game_canvas = Canvas(50, 35)
-input = Controls('menu')
-selected = 0
-start = False
-
-# track current page using stack
-pages = [page["TUI Tetris"]]
-
-# track current page label using stack
-page_labels =["TUI Tetris"]
-
-# chosen includes all selected choices
-# default game_mode to avoid crashing
-
-chosen = {'TUI Tetris': "Marathon"}
-
-game_mode = ("Marathon",)
-
-waiting_for = None
-
-with raw_mode():
-    try:
-        listener.start()
-
-        while not start:
-
-            new_actions, held_actions = input.read()
-
-            current_options = list(pages[-1])
-
-            options_num = len(current_options)
-
-            current_page_pointer = pages[-1]
-
-            current_page_label = page_labels[-1]
-
-            selected_option_pointer = current_page_pointer[current_options[selected]]
-
-            selected_option_label = current_options[selected]
-
-            if Action.MENU_DOWN in new_actions:
-                selected = (selected +1) % options_num
-
-            if Action.MENU_UP in new_actions:
-                selected = (selected - 1) % options_num
-
-            if Action.MENU_RIGHT in new_actions:
-                if isinstance(selected_option_pointer, dict):
-                    pages.append(selected_option_pointer)
-                    selected = 0
-                    page_labels.append(selected_option_label)
-
-            if Action.MENU_LEFT in new_actions:
-                if len(pages) > 1:
-                    pages.pop()
-                    page_labels.pop()
-                    selected = 0
-
-            if Action.MENU_ENTER in new_actions:
-
-                # acts like left arrow if label contains more options
-                if isinstance(selected_option_pointer, dict):
-                    pages.append(selected_option_pointer)
-                    selected = 0
-                    page_labels.append(selected_option_label)
-
-                if isinstance(selected_option_pointer, tuple):
-                    # put selected option into dictionary
-                    chosen[current_page_label] = selected_option_label
-
-                    # tuple = game_mode
-                    game_mode = selected_option_pointer
-                    if current_page_label != "TUI Tetris":
-                        chosen["TUI Tetris"] = current_page_label
-
-                if isinstance(selected_option_pointer, Setting):
-                    waiting_for = selected_option_pointer.name
+        "Start": True,
         
-                # start game
-                if selected_option_label == "Start":
-                    start = True
+        "Quit": None}
+}
+def results_menu(canvas, game):
+    display_results(canvas, game)
 
-            if Action.MENU_ESC in new_actions:
-                break
+    inputs = Controls('menu')
 
-            lines = []
+    while True:
+        new_actions, held_actions = inputs.read()
 
-            for line in current_options:
+        if Action.MENU_ENTER in new_actions:
+            return False
+        if Action.MENU_ESC in new_actions:
+            return True
 
-                line_pointer = current_page_pointer[line]
-                if isinstance(line_pointer, Setting):
-                    if line_pointer.name == waiting_for:
-                        lines.append((f'{line:<20} Press a key', True))
-                    else:
-                        # either show keybind name or show keybind
-                        key = bindings[line_pointer.name]
-                        lines.append((f'{line:<20} {key_names[key] if key in key_names else key}', False))
+        time.sleep(0.01)
+
+
+def selection_menu(canvas):
+
+    inputs = Controls('menu')
+    
+    selected = 0
+
+    # track current page using stack
+    pages = [page["TUI Tetris"]]
+
+    # track current page label using stack
+    page_labels =["TUI Tetris"]
+
+    # chosen includes all selected choices
+    # default game_mode to avoid crashing
+
+    chosen = {'TUI Tetris': "Marathon"}
+
+    game_mode = ("Marathon",)
+
+    waiting_for = None  
+    
+    while True:
+
+        new_actions, held_actions = inputs.read()
+
+        current_options = list(pages[-1])
+
+        options_num = len(current_options)
+
+        current_page_pointer = pages[-1]
+
+        current_page_label = page_labels[-1]
+
+        selected_option_pointer = current_page_pointer[current_options[selected]]
+
+        selected_option_label = current_options[selected]
+
+        if Action.MENU_DOWN in new_actions:
+            selected = (selected +1) % options_num
+
+        if Action.MENU_UP in new_actions:
+            selected = (selected - 1) % options_num
+
+        if Action.MENU_RIGHT in new_actions:
+            if isinstance(selected_option_pointer, dict):
+                pages.append(selected_option_pointer)
+                selected = 0
+                page_labels.append(selected_option_label)
+
+        if Action.MENU_LEFT in new_actions or Action.MENU_ESC in new_actions:
+            if len(pages) > 1:
+                pages.pop()
+                page_labels.pop()
+                if selected > len(list(pages[-1])) -1:
+                    selected = len(list(pages[-1])) -1
+
+        if Action.MENU_ENTER in new_actions:
+
+            # acts like left arrow if label contains more options
+            if isinstance(selected_option_pointer, dict):
+                pages.append(selected_option_pointer)
+                selected = 0
+                page_labels.append(selected_option_label)
+
+            if isinstance(selected_option_pointer, tuple):
+                # put selected option into dictionary
+                chosen[current_page_label] = selected_option_label
+
+                # tuple = game_mode
+                game_mode = selected_option_pointer
+                if current_page_label != "TUI Tetris":
+                    chosen["TUI Tetris"] = current_page_label
+
+            # reset controls
+            if selected_option_label == "Reset":
+                bindings.clear()
+                bindings.update(default_bindings)
+
+            elif isinstance(selected_option_pointer, Setting):
+                waiting_for = selected_option_pointer.name
+    
+            # start game
+            if selected_option_label == "Start":
+                return game_mode
+
+            # quit game
+            if selected_option_label == "Quit":
+                return None
+
+        lines = []
+
+        for line in current_options:
+
+            line_pointer = current_page_pointer[line]
+            if isinstance(line_pointer, Setting):
+                if line_pointer.name == waiting_for:
+                    lines.append((f'{line:<20} Press a key', True))
                 else:
-                    lines.append((line, line in chosen.values()))
-                
-            display_menu(game_canvas, lines, current_page_label, selected)
+                    # either show keybind name or show keybind
+                    key = bindings[line_pointer.name]
+                    lines.append((f'{line:<20} {key_names[key] if key in key_names else key}', False))
+            else:
+                lines.append((line, line in chosen.values()))
+            
+        display_menu(canvas, lines, current_page_label, selected)
 
-            # get last held keys
-            last_held = set(pressed)
+        # get last held keys
+        last_held = set(pressed)
 
-            while waiting_for:
+        while waiting_for:
 
-                # look for new keys
-                new_key = set(pressed) - last_held
+            # look for new keys
+            new_press = set(pressed) - last_held
 
-                if new_key:
-                    if list(new_key)[0] == Key.esc:
-                        waiting_for = None
-                        break
-                    else:
-                        bindings[waiting_for] = list(new_key)[0]
-                        waiting_for = None
-                        break
-                time.sleep(0.01)
-                    
- 
+            if new_press:
+                new_key = list(new_press)[0]
+                if new_key == Key.esc:
+                    waiting_for = None
+                    break
+                elif new_key in bindings.values():
+
+                    # make sure binds don't conflict
+                    for bind in bindings:
+                        if bindings[bind] == new_key:
+                            bindings[bind] = None
+                    bindings[waiting_for] = new_key
+                    waiting_for = None
+                    break
+
+                else:
+                    bindings[waiting_for] = new_key
+                    waiting_for = None
+                    break
+
             time.sleep(0.01)
 
-        game = Game(game_canvas, *game_mode)
-        game.start()
+        inputs.read()
 
-    finally:
-
-        listener.stop()
-
+        time.sleep(0.01)

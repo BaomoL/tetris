@@ -50,11 +50,32 @@ def display_menu(canvas, lines, title, selected):
         row += 1
 
     canvas.load(new_buffer)
-    
+
+def display_results(canvas, game):
+
+    new_buffer = canvas.blank_canvas()
+    if game.mode == 'Sprint':
+        text(new_buffer, 3, 3, f'{game.mode} | {game.total_lines}/{game.sprint}', (255,255,255))
+
+    if game.mode in ('Hardcore', 'Marathon'):
+        text(new_buffer, 3, 3, f'{game.mode} | Level: {game.level}', (255,255,255))
+
+    if game.mode == 'Ultra':
+        text(new_buffer, 3, 3, f'{game.mode} | {format_time(game.elapsed_time)}/{format_time(game.ultra)}', (255,255,255))
+
+    text(new_buffer, 4, 3, f'Score: {int(game.score)}', (255,255,255))
+    text(new_buffer, 5, 3, f'Elapsed Time: {format_time(game.elapsed_time)}', (255,255,255))
+    text(new_buffer, 6, 3, f'Pieces Placed: {game.board.placed_pieces}', (255,255,255))
+    text(new_buffer, 7, 3, f'Lines Cleared: {game.total_lines}', (255,255,255))
+    text(new_buffer, 8, 3, f'Piece Per Second: {round(game.board.placed_pieces/game.elapsed_time, 2)}', (255,255,255))
+
+    text(new_buffer, 10, 3, 'Press Enter to play again', (255,255,255))
+    text(new_buffer, 11, 3, 'Press Esc to return to menu', (255,255,255))
+    canvas.load(new_buffer)
 
 def render(canvas, game, board):
 
-    # current grid
+    # fresh blank grid
 
     new_buffer = canvas.blank_canvas()
 
