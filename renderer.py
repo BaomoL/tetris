@@ -1,5 +1,4 @@
 from pieces import Piece
-import time
 
 # function for converting time to time format
 
@@ -20,52 +19,35 @@ def draw_block(canvas, row, col, char, offset=0):
 def text(canvas, row, col, text, fcolor = None, bcolor = None):
     column = col
     for letter in list(text):
+
+        # ensure no index error by only printing letters within borders of canvas 
+        if column > len(canvas[0]) - 1 or row > len(canvas) - 1:
+            break
         canvas[row][column] = (letter, fcolor, bcolor)
         column+=1
 
-def display_menu(canvas, selected, title, menu, entered, game_mode):
+def display_menu(canvas, lines, title, selected):
 
     new_buffer = canvas.blank_canvas()
-    text(new_buffer, 2, 2, title, (255,255,255))
 
-    for i in range(len(menu)):
-        if title == "Select Mode":
-            txt = menu[i]
-            y = i + 5
-            highlighted = False
-            if menu[i] == "Settings":
-                y +=1
-            elif menu[i] == "Start":
-                y += 2
-            elif menu[i] == "Sprint":
-                if "Sprint" in entered:
-                    txt = f'{menu[i]}: {entered["Sprint"][0][1]} Lines'
-            elif menu[i] == "Ultra":
-                if "Ultra" in entered:
-                    txt = f'{menu[i]}: {entered["Ultra"][0][2]//60} Minute'
-            if menu[i] == game_mode:
-                highlighted = True
-            if highlighted:
-                text(new_buffer, y, 3, txt, (0,0,0), (255, 255, 255))
-            else:
-                text(new_buffer, y, 3, txt, (255,255,255))
+    row = 4
 
-        elif title in entered:
-            if entered[title][1] == i:
-                text(new_buffer, 5+i, 3, f'{menu[i]}', (0,0,0), (255, 255, 255))
-            else:
-                text(new_buffer, 5+i, 3, f'{menu[i]}', (255,255,255))
+    # draw menu title
+
+    text(new_buffer, row-2, 4, title, (255,255,255))
+
+    # draw items; highlight if highlight is True
+
+    for item_position, (item, highlight) in enumerate(lines):
+
+        if item_position == selected:
+            text(new_buffer, row, 2, '>', (255,255,255))
+        if highlight:
+            text(new_buffer, row, 4, item, (0,0,0), (255,255,255))
         else:
-            text(new_buffer, 5+i, 3, f'{menu[i]}', (255,255,255))
+            text(new_buffer, row, 4, item, (255,255,255))
 
-    if title == "Select Mode" and menu[selected] == "Settings":
-        text(new_buffer, selected+6, 1, '>', (255,255,255))
-    elif title == "Select Mode" and menu[selected] == "Start":
-        text(new_buffer, selected+7, 1, '>', (255,255,255))
-    else:
-        text(new_buffer, selected+5, 1, '>', (255,255,255))
-
-    # text(new_buffer, 20, 3, f'{entered}', (255,255,255))
+        row += 1
 
     canvas.load(new_buffer)
     

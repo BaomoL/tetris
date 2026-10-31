@@ -25,4 +25,4 @@ move_left =     Key.left
 move_right =    Key.right
 soft_drop =     Key.down
 hard_drop =     Key.space
-hold =          Key.shift 
+hold =          Key.shift

@@ -35,6 +35,7 @@ class Canvas:
 
         fg = f'\033[38;2;{fcolor[0]};{fcolor[1]};{fcolor[2]}m' if fcolor else '\033[39m'
         bg = f'\033[48;2;{bcolor[0]};{bcolor[1]};{bcolor[2]}m' if bcolor else '\033[49m'
+        
         sys.stdout.write(f'\033[{y};{x}H{fg}{bg}{text}\033[0m')
     
     # compares the canvas with previous and makes changes only to updated tiles
